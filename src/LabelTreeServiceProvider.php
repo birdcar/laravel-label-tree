@@ -6,6 +6,8 @@ namespace Birdcar\LabelTree;
 
 use Birdcar\LabelTree\Models\LabelRelationship;
 use Birdcar\LabelTree\Observers\LabelRelationshipObserver;
+use Birdcar\LabelTree\Query\AdapterFactory;
+use Birdcar\LabelTree\Query\PathQueryAdapter;
 use Birdcar\LabelTree\Services\CycleDetector;
 use Birdcar\LabelTree\Services\RouteGenerator;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +20,11 @@ class LabelTreeServiceProvider extends ServiceProvider
 
         $this->app->singleton(CycleDetector::class);
         $this->app->singleton(RouteGenerator::class);
+        $this->app->singleton(AdapterFactory::class);
+
+        $this->app->singleton(PathQueryAdapter::class, function ($app) {
+            return $app->make(AdapterFactory::class)->make();
+        });
     }
 
     public function boot(): void

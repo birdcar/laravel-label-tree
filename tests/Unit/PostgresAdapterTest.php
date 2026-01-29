@@ -1,0 +1,183 @@
+<?php
+
+declare(strict_types=1);
+
+use Birdcar\LabelTree\Query\PostgresAdapter;
+use Illuminate\Database\Eloquent\Builder;
+
+beforeEach(function (): void {
+    $this->adapter = new PostgresAdapter;
+});
+
+it('converts single wildcard pattern to regex when no ltree', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return false;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('path ~ ?', ['^[^.]+\\.bug$'])
+        ->andReturnSelf();
+
+    $adapter->wherePathMatches($query, 'path', '*.bug');
+});
+
+it('converts double wildcard at start to regex with optional prefix when no ltree', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return false;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    // **.bug -> (.*\.)?bug - matches "bug", "a.bug", "a.b.bug"
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('path ~ ?', ['^(.*\.)?bug$'])
+        ->andReturnSelf();
+
+    $adapter->wherePathMatches($query, 'path', '**.bug');
+});
+
+it('uses lquery syntax when ltree available', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return true;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('path::lquery ~ ?', ['*.bug'])
+        ->andReturnSelf();
+
+    $adapter->wherePathMatches($query, 'path', '*.bug');
+});
+
+it('converts double wildcard to lquery syntax', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return true;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('path::lquery ~ ?', ['*{0,}.bug'])
+        ->andReturnSelf();
+
+    $adapter->wherePathMatches($query, 'path', '**.bug');
+});
+
+it('applies LIKE pattern directly', function (): void {
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('where')
+        ->once()
+        ->with('path', 'LIKE', 'priority.%')
+        ->andReturnSelf();
+
+    $this->adapter->wherePathLike($query, 'path', 'priority.%');
+});
+
+it('finds ancestors using ltree operator when available', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return true;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('? <@ path::ltree', ['a.b.c'])
+        ->andReturnSelf();
+
+    $adapter->whereAncestorOf($query, 'path', 'a.b.c');
+});
+
+it('finds ancestors using whereIn when no ltree', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return false;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereIn')
+        ->once()
+        ->with('path', ['a', 'a.b'])
+        ->andReturnSelf();
+
+    $adapter->whereAncestorOf($query, 'path', 'a.b.c');
+});
+
+it('returns empty result for root path ancestors', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return false;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('1 = 0')
+        ->andReturnSelf();
+
+    $adapter->whereAncestorOf($query, 'path', 'root');
+});
+
+it('finds descendants using ltree operator when available', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return true;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('whereRaw')
+        ->once()
+        ->with('path::ltree <@ ?', ['priority.high'])
+        ->andReturnSelf();
+
+    $adapter->whereDescendantOf($query, 'path', 'priority.high');
+});
+
+it('finds descendants using LIKE when no ltree', function (): void {
+    $adapter = new class extends PostgresAdapter
+    {
+        public function hasLtreeSupport(): bool
+        {
+            return false;
+        }
+    };
+
+    $query = Mockery::mock(Builder::class);
+    $query->shouldReceive('where')
+        ->once()
+        ->with('path', 'LIKE', 'priority.high.%')
+        ->andReturnSelf();
+
+    $adapter->whereDescendantOf($query, 'path', 'priority.high');
+});
