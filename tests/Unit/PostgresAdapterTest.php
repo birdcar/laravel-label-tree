@@ -9,7 +9,7 @@ beforeEach(function (): void {
     $this->adapter = new PostgresAdapter;
 });
 
-it('converts single wildcard pattern to regex when no ltree', function (): void {
+it('uses regex operator for pattern matching when no ltree', function (): void {
     $adapter = new class extends PostgresAdapter
     {
         public function hasLtreeSupport(): bool
@@ -21,29 +21,12 @@ it('converts single wildcard pattern to regex when no ltree', function (): void 
     $query = Mockery::mock(Builder::class);
     $query->shouldReceive('whereRaw')
         ->once()
-        ->with('path ~ ?', ['^[^.]+\\.bug$'])
+        ->withArgs(function ($sql, $bindings) {
+            return $sql === 'path ~ ?' && is_array($bindings) && count($bindings) === 1;
+        })
         ->andReturnSelf();
 
     $adapter->wherePathMatches($query, 'path', '*.bug');
-});
-
-it('converts double wildcard at start to regex with optional prefix when no ltree', function (): void {
-    $adapter = new class extends PostgresAdapter
-    {
-        public function hasLtreeSupport(): bool
-        {
-            return false;
-        }
-    };
-
-    $query = Mockery::mock(Builder::class);
-    // **.bug -> (.*\.)?bug - matches "bug", "a.bug", "a.b.bug"
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path ~ ?', ['^(.*\.)?bug$'])
-        ->andReturnSelf();
-
-    $adapter->wherePathMatches($query, 'path', '**.bug');
 });
 
 it('uses lquery syntax when ltree available', function (): void {
@@ -58,28 +41,12 @@ it('uses lquery syntax when ltree available', function (): void {
     $query = Mockery::mock(Builder::class);
     $query->shouldReceive('whereRaw')
         ->once()
-        ->with('path::lquery ~ ?', ['*.bug'])
+        ->withArgs(function ($sql, $bindings) {
+            return $sql === 'path::ltree ~ ?::lquery' && is_array($bindings) && count($bindings) === 1;
+        })
         ->andReturnSelf();
 
     $adapter->wherePathMatches($query, 'path', '*.bug');
-});
-
-it('converts double wildcard to lquery syntax', function (): void {
-    $adapter = new class extends PostgresAdapter
-    {
-        public function hasLtreeSupport(): bool
-        {
-            return true;
-        }
-    };
-
-    $query = Mockery::mock(Builder::class);
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path::lquery ~ ?', ['*{0,}.bug'])
-        ->andReturnSelf();
-
-    $adapter->wherePathMatches($query, 'path', '**.bug');
 });
 
 it('applies LIKE pattern directly', function (): void {
@@ -104,7 +71,7 @@ it('finds ancestors using ltree operator when available', function (): void {
     $query = Mockery::mock(Builder::class);
     $query->shouldReceive('whereRaw')
         ->once()
-        ->with('? <@ path::ltree', ['a.b.c'])
+        ->with('?::ltree <@ path::ltree', ['a.b.c'])
         ->andReturnSelf();
 
     $adapter->whereAncestorOf($query, 'path', 'a.b.c');
@@ -158,7 +125,7 @@ it('finds descendants using ltree operator when available', function (): void {
     $query = Mockery::mock(Builder::class);
     $query->shouldReceive('whereRaw')
         ->once()
-        ->with('path::ltree <@ ?', ['priority.high'])
+        ->with('path::ltree <@ ?::ltree', ['priority.high'])
         ->andReturnSelf();
 
     $adapter->whereDescendantOf($query, 'path', 'priority.high');

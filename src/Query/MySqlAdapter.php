@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Birdcar\LabelTree\Query;
 
+use Birdcar\LabelTree\Query\Lquery\Lquery;
 use Illuminate\Database\Eloquent\Builder;
 
 class MySqlAdapter implements PathQueryAdapter
 {
     public function wherePathMatches(Builder $query, string $column, string $pattern): Builder
     {
-        $regex = $this->toMysqlRegex($pattern);
+        $regex = Lquery::toRegex($pattern);
 
         return $query->whereRaw("{$column} REGEXP ?", [$regex]);
     }
@@ -39,26 +40,6 @@ class MySqlAdapter implements PathQueryAdapter
     public function hasLtreeSupport(): bool
     {
         return false;
-    }
-
-    protected function toMysqlRegex(string $pattern): string
-    {
-        $escaped = preg_quote($pattern, '/');
-
-        // Handle ** at start: **.foo -> (.*\.)? to make prefix optional
-        if (str_starts_with($escaped, '\*\*\.')) {
-            $escaped = '(.*\.)?'.substr($escaped, 6);
-        } elseif ($escaped === '\*\*') {
-            return '^.*$';
-        }
-
-        // Handle remaining ** (in middle or end)
-        $regex = str_replace('\*\*', '.*', $escaped);
-
-        // Handle single * - matches exactly one segment (no dots)
-        $regex = str_replace('\*', '[^.]+', $regex);
-
-        return "^{$regex}$";
     }
 
     /**

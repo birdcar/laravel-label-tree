@@ -13,7 +13,7 @@ it('has no ltree support', function (): void {
     expect($this->adapter->hasLtreeSupport())->toBeFalse();
 });
 
-it('converts single wildcard pattern to REGEXP', function (): void {
+it('uses REGEXP for pattern matching', function (): void {
     $query = Mockery::mock(Builder::class);
     $connection = Mockery::mock(\Illuminate\Database\Connection::class);
     $pdo = Mockery::mock(PDO::class);
@@ -25,65 +25,12 @@ it('converts single wildcard pattern to REGEXP', function (): void {
 
     $query->shouldReceive('whereRaw')
         ->once()
-        ->with('path REGEXP ?', ['^[^.]+\\.bug$'])
+        ->withArgs(function ($sql, $bindings) {
+            return $sql === 'path REGEXP ?' && is_array($bindings) && count($bindings) === 1;
+        })
         ->andReturnSelf();
 
     $this->adapter->wherePathMatches($query, 'path', '*.bug');
-});
-
-it('converts double wildcard at start to REGEXP with optional prefix', function (): void {
-    $query = Mockery::mock(Builder::class);
-    $connection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $pdo = Mockery::mock(PDO::class);
-
-    $query->shouldReceive('getConnection')->once()->andReturn($connection);
-    $connection->shouldReceive('getPdo')->once()->andReturn($pdo);
-    $pdo->shouldReceive('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->once()->andReturn('sqlite');
-    $pdo->shouldReceive('sqliteCreateFunction')->once();
-
-    // **.bug -> (.*\.)?bug - matches "bug", "a.bug", "a.b.bug"
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path REGEXP ?', ['^(.*\.)?bug$'])
-        ->andReturnSelf();
-
-    $this->adapter->wherePathMatches($query, 'path', '**.bug');
-});
-
-it('converts mixed wildcards to REGEXP', function (): void {
-    $query = Mockery::mock(Builder::class);
-    $connection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $pdo = Mockery::mock(PDO::class);
-
-    $query->shouldReceive('getConnection')->once()->andReturn($connection);
-    $connection->shouldReceive('getPdo')->once()->andReturn($pdo);
-    $pdo->shouldReceive('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->once()->andReturn('sqlite');
-    $pdo->shouldReceive('sqliteCreateFunction')->once();
-
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path REGEXP ?', ['^priority\\.[^.]+\\..*$'])
-        ->andReturnSelf();
-
-    $this->adapter->wherePathMatches($query, 'path', 'priority.*.**');
-});
-
-it('escapes regex special characters in patterns', function (): void {
-    $query = Mockery::mock(Builder::class);
-    $connection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $pdo = Mockery::mock(PDO::class);
-
-    $query->shouldReceive('getConnection')->once()->andReturn($connection);
-    $connection->shouldReceive('getPdo')->once()->andReturn($pdo);
-    $pdo->shouldReceive('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->once()->andReturn('sqlite');
-    $pdo->shouldReceive('sqliteCreateFunction')->once();
-
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path REGEXP ?', ['^(.*\.)?test\\(value\\)$'])
-        ->andReturnSelf();
-
-    $this->adapter->wherePathMatches($query, 'path', '**.test(value)');
 });
 
 it('applies LIKE pattern directly', function (): void {

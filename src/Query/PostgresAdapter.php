@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Birdcar\LabelTree\Query;
 
+use Birdcar\LabelTree\Query\Lquery\Lquery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -14,12 +15,14 @@ class PostgresAdapter implements PathQueryAdapter
     public function wherePathMatches(Builder $query, string $column, string $pattern): Builder
     {
         if ($this->hasLtreeSupport()) {
-            $lquery = $this->toLquery($pattern);
+            // Use native lquery - parse and recompile to ensure valid syntax
+            $lquery = Lquery::toLquery($pattern);
 
-            return $query->whereRaw("{$column}::lquery ~ ?", [$lquery]);
+            return $query->whereRaw("{$column}::ltree ~ ?::lquery", [$lquery]);
         }
 
-        $regex = $this->toPostgresRegex($pattern);
+        // Fall back to regex
+        $regex = Lquery::toRegex($pattern);
 
         return $query->whereRaw("{$column} ~ ?", [$regex]);
     }
@@ -32,7 +35,7 @@ class PostgresAdapter implements PathQueryAdapter
     public function whereAncestorOf(Builder $query, string $column, string $path): Builder
     {
         if ($this->hasLtreeSupport()) {
-            return $query->whereRaw("? <@ {$column}::ltree", [$path]);
+            return $query->whereRaw("?::ltree <@ {$column}::ltree", [$path]);
         }
 
         $prefixes = $this->buildPrefixes($path);
@@ -47,7 +50,7 @@ class PostgresAdapter implements PathQueryAdapter
     public function whereDescendantOf(Builder $query, string $column, string $path): Builder
     {
         if ($this->hasLtreeSupport()) {
-            return $query->whereRaw("{$column}::ltree <@ ?", [$path]);
+            return $query->whereRaw("{$column}::ltree <@ ?::ltree", [$path]);
         }
 
         return $query->where($column, 'LIKE', "{$path}.%");
@@ -65,36 +68,6 @@ class PostgresAdapter implements PathQueryAdapter
         }
 
         return $this->ltreeAvailable;
-    }
-
-    protected function toLquery(string $pattern): string
-    {
-        // In lquery: * matches one label, *{0,} matches zero or more labels
-        return str_replace(
-            ['**', '*'],
-            ['*{0,}', '*'],
-            $pattern
-        );
-    }
-
-    protected function toPostgresRegex(string $pattern): string
-    {
-        $escaped = preg_quote($pattern, '/');
-
-        // Handle ** at start: **.foo -> (.*\.)? to make prefix optional
-        if (str_starts_with($escaped, '\*\*\.')) {
-            $escaped = '(.*\.)?'.substr($escaped, 6);
-        } elseif ($escaped === '\*\*') {
-            return '^.*$';
-        }
-
-        // Handle remaining ** (in middle or end)
-        $regex = str_replace('\*\*', '.*', $escaped);
-
-        // Handle single * - matches exactly one segment (no dots)
-        $regex = str_replace('\*', '[^.]+', $regex);
-
-        return "^{$regex}$";
     }
 
     /**

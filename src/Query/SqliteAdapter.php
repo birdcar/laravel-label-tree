@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Birdcar\LabelTree\Query;
 
+use Birdcar\LabelTree\Query\Lquery\Lquery;
 use Illuminate\Database\Eloquent\Builder;
 use PDO;
 
@@ -15,7 +16,7 @@ class SqliteAdapter implements PathQueryAdapter
     {
         $this->ensureRegexpFunction($query);
 
-        $regex = $this->toRegex($pattern);
+        $regex = Lquery::toRegex($pattern);
 
         return $query->whereRaw("{$column} REGEXP ?", [$regex]);
     }
@@ -70,34 +71,6 @@ class SqliteAdapter implements PathQueryAdapter
         }
 
         $this->regexpRegistered = true;
-    }
-
-    /**
-     * Convert pattern to regex (same logic as MySQL, and Postgres without ltree).
-     */
-    protected function toRegex(string $pattern): string
-    {
-        $escaped = preg_quote($pattern, '/');
-
-        // Handle ** at start: **.foo -> (.*\.)? to make prefix optional
-        // Handle ** elsewhere: foo.**.bar -> .*\. for required segments
-        // Handle * -> [^.]+ (one or more non-dot chars = single segment)
-
-        // First, handle ** at the very start (matches zero or more segments)
-        if (str_starts_with($escaped, '\*\*\.')) {
-            $escaped = '(.*\.)?'.substr($escaped, 6); // Remove \*\*\. and add optional prefix
-        } elseif ($escaped === '\*\*') {
-            // Pattern is just ** - matches anything
-            return '^.*$';
-        }
-
-        // Handle remaining ** (in middle or end) - requires at least the dot
-        $regex = str_replace('\*\*', '.*', $escaped);
-
-        // Handle single * - matches exactly one segment (no dots)
-        $regex = str_replace('\*', '[^.]+', $regex);
-
-        return "^{$regex}$";
     }
 
     /**

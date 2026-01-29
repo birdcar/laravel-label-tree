@@ -16,7 +16,7 @@ beforeEach(function (): void {
     LabelRoute::create(['path' => 'status.open.bug', 'depth' => 2]);
 });
 
-describe('wherePathMatches', function (): void {
+describe('wherePathMatches with lquery semantics', function (): void {
     it('matches exact path', function (): void {
         $routes = LabelRoute::wherePathMatches('bug')->get();
 
@@ -24,25 +24,62 @@ describe('wherePathMatches', function (): void {
         expect($routes->first()->path)->toBe('bug');
     });
 
-    it('matches single wildcard for one segment', function (): void {
-        // SQLite uses LIKE approximation, so *.bug matches any.bug pattern
+    it('* matches zero or more labels (any path containing label)', function (): void {
+        // *.bug matches any path ending with "bug" (including just "bug")
         $routes = LabelRoute::wherePathMatches('*.bug')->get();
 
-        // Should match: priority.bug
-        expect($routes->pluck('path')->toArray())
-            ->toContain('priority.bug');
-    });
-
-    it('matches double wildcard for any segments', function (): void {
-        $routes = LabelRoute::wherePathMatches('**.bug')->get();
-
         // Should match: bug, priority.bug, priority.high.bug, status.open.bug
-        // **.bug means "zero or more segments followed by bug"
+        expect($routes)->toHaveCount(4);
         expect($routes->pluck('path')->toArray())
             ->toContain('bug')
             ->toContain('priority.bug')
             ->toContain('priority.high.bug')
             ->toContain('status.open.bug');
+    });
+
+    it('*.foo.* matches any path containing foo', function (): void {
+        // *.bug.* matches any path containing "bug"
+        $routes = LabelRoute::wherePathMatches('*.bug.*')->get();
+
+        // Should match all paths containing "bug"
+        expect($routes)->toHaveCount(4);
+        expect($routes->pluck('path')->toArray())
+            ->toContain('bug')
+            ->toContain('priority.bug')
+            ->toContain('priority.high.bug')
+            ->toContain('status.open.bug');
+    });
+
+    it('foo.* matches foo followed by any labels', function (): void {
+        // priority.* matches priority and anything under it
+        $routes = LabelRoute::wherePathMatches('priority.*')->get();
+
+        expect($routes)->toHaveCount(4);
+        expect($routes->pluck('path')->toArray())
+            ->toContain('priority')
+            ->toContain('priority.bug')
+            ->toContain('priority.high')
+            ->toContain('priority.high.bug');
+    });
+
+    it('*{1} matches exactly one label', function (): void {
+        // *{1}.bug matches exactly "X.bug" (one label before bug)
+        $routes = LabelRoute::wherePathMatches('*{1}.bug')->get();
+
+        // Only matches: priority.bug (one label + bug)
+        // Does NOT match: status.open.bug (two labels + bug)
+        expect($routes)->toHaveCount(1);
+        expect($routes->first()->path)->toBe('priority.bug');
+    });
+
+    it('*{2} matches exactly two labels', function (): void {
+        $routes = LabelRoute::wherePathMatches('*{2}')->get();
+
+        expect($routes)->toHaveCount(3);
+        expect($routes->pluck('path')->toArray())
+            ->toContain('priority.bug')
+            ->toContain('priority.high')
+            ->toContain('status.open');
     });
 });
 

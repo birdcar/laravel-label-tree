@@ -13,45 +13,16 @@ it('has no ltree support', function (): void {
     expect($this->adapter->hasLtreeSupport())->toBeFalse();
 });
 
-it('converts single wildcard pattern to REGEXP', function (): void {
+it('uses REGEXP for pattern matching', function (): void {
     $query = Mockery::mock(Builder::class);
     $query->shouldReceive('whereRaw')
         ->once()
-        ->with('path REGEXP ?', ['^[^.]+\\.bug$'])
+        ->withArgs(function ($sql, $bindings) {
+            return $sql === 'path REGEXP ?' && is_array($bindings) && count($bindings) === 1;
+        })
         ->andReturnSelf();
 
     $this->adapter->wherePathMatches($query, 'path', '*.bug');
-});
-
-it('converts double wildcard at start to REGEXP with optional prefix', function (): void {
-    $query = Mockery::mock(Builder::class);
-    // **.bug -> (.*\.)?bug - matches "bug", "a.bug", "a.b.bug"
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path REGEXP ?', ['^(.*\.)?bug$'])
-        ->andReturnSelf();
-
-    $this->adapter->wherePathMatches($query, 'path', '**.bug');
-});
-
-it('converts pattern with trailing double wildcard to REGEXP', function (): void {
-    $query = Mockery::mock(Builder::class);
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path REGEXP ?', ['^priority\\..*$'])
-        ->andReturnSelf();
-
-    $this->adapter->wherePathMatches($query, 'path', 'priority.**');
-});
-
-it('escapes regex special characters in patterns', function (): void {
-    $query = Mockery::mock(Builder::class);
-    $query->shouldReceive('whereRaw')
-        ->once()
-        ->with('path REGEXP ?', ['^(.*\.)?test\\(value\\)$'])
-        ->andReturnSelf();
-
-    $this->adapter->wherePathMatches($query, 'path', '**.test(value)');
 });
 
 it('applies LIKE pattern directly', function (): void {
@@ -68,10 +39,10 @@ it('finds ancestors using whereIn with prefixes', function (): void {
     $query = Mockery::mock(Builder::class);
     $query->shouldReceive('whereIn')
         ->once()
-        ->with('path', ['a', 'a.b'])
+        ->with('path', ['a', 'a.b', 'a.b.c'])
         ->andReturnSelf();
 
-    $this->adapter->whereAncestorOf($query, 'path', 'a.b.c');
+    $this->adapter->whereAncestorOf($query, 'path', 'a.b.c.d');
 });
 
 it('returns empty result for root path ancestors', function (): void {
