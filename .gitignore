@@ -1,0 +1,30 @@
+/vendor/
+/node_modules/
+/.phpunit.cache/
+/.phpstan.cache/
+/composer.lock
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.phpunit.result.cache
+coverage/
+
+# Ideation docs (generated specs)
+/docs/ideation/
+
+# Workbench (testbench generated)
+/workbench/
+/testbench.yaml
+/.testbench/
+
+# Claude Code
+/.claude/
