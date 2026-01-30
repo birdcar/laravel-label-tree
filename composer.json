@@ -1,76 +1,85 @@
 {
-    "name": "birdcar/laravel-label-tree",
-    "description": "A Laravel package for managing hierarchical labels as a DAG with materialized path routes",
-    "type": "library",
-    "license": "MIT",
-    "version": "0.0.1",
-    "authors": [
-        {
-            "name": "Nick Nisi",
-            "email": "nick@nisi.org"
-        }
-    ],
-    "require": {
-        "php": "^8.3",
-        "illuminate/contracts": "^11.0|^12.0",
-        "illuminate/database": "^11.0|^12.0",
-        "illuminate/support": "^11.0|^12.0"
-    },
-    "require-dev": {
-        "larastan/larastan": "^3.0",
-        "laravel/pint": "^1.18",
-        "orchestra/testbench": "^9.0|^10.0",
-        "pestphp/pest": "^3.0",
-        "phpstan/phpstan": "^2.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "Birdcar\\LabelTree\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Birdcar\\LabelTree\\Tests\\": "tests/",
-            "Workbench\\App\\": "workbench/app/",
-            "Workbench\\Database\\Factories\\": "workbench/database/factories/",
-            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
-        }
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Birdcar\\LabelTree\\LabelTreeServiceProvider"
-            ]
-        }
-    },
-    "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true,
-    "scripts": {
-        "post-autoload-dump": [
-            "@clear",
-            "@prepare"
-        ],
-        "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
-        "prepare": "@php vendor/bin/testbench package:discover --ansi",
-        "build": "@php vendor/bin/testbench workbench:build --ansi",
-        "serve": [
-            "Composer\\Config::disableProcessTimeout",
-            "@build",
-            "@php vendor/bin/testbench serve --ansi"
-        ],
-        "lint": [
-            "@php vendor/bin/pint --ansi",
-            "@php vendor/bin/phpstan analyse --verbose --ansi"
-        ],
-        "test": [
-            "@clear",
-            "@php vendor/bin/pest"
-        ]
+  "name": "birdcar/laravel-label-tree",
+  "description": "A Laravel package for managing hierarchical labels as a DAG with materialized path routes",
+  "type": "library",
+  "license": "MIT",
+  "version": "0.0.1",
+  "authors": [
+    {
+      "name": "Birdcar",
+      "email": "devrel@birdcar.dev"
     }
+  ],
+  "require": {
+    "php": "^8.3",
+    "illuminate/contracts": "^11.0|^12.0",
+    "illuminate/database": "^11.0|^12.0",
+    "illuminate/support": "^11.0|^12.0"
+  },
+  "require-dev": {
+    "larastan/larastan": "^3.0",
+    "laravel/pint": "^1.18",
+    "orchestra/testbench": "^9.0|^10.0",
+    "pestphp/pest": "^3.0",
+    "phpstan/phpstan": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Birdcar\\LabelTree\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Birdcar\\LabelTree\\Tests\\": "tests/",
+      "Workbench\\App\\": "workbench/app/",
+      "Workbench\\Database\\Factories\\": "workbench/database/factories/",
+      "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Birdcar\\LabelTree\\LabelTreeServiceProvider"
+      ]
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "scripts": {
+    "post-autoload-dump": [
+      "@clear",
+      "@prepare"
+    ],
+    "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
+    "prepare": "@php vendor/bin/testbench package:discover --ansi",
+    "build": "@php vendor/bin/testbench workbench:build --ansi",
+    "serve": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build",
+      "@php vendor/bin/testbench serve --ansi"
+    ],
+    "lint": [
+      "@php vendor/bin/pint --ansi",
+      "@php vendor/bin/phpstan analyse --verbose --ansi"
+    ],
+    "test": [
+      "@clear",
+      "@php vendor/bin/pest"
+    ],
+    "test:sqlite": "DB_CONNECTION=testing vendor/bin/pest",
+    "test:mysql": "DB_CONNECTION=mysql vendor/bin/pest",
+    "test:pgsql": "DB_CONNECTION=pgsql vendor/bin/pest",
+    "test:all": [
+      "@test:sqlite",
+      "@test:mysql",
+      "@test:pgsql"
+    ],
+    "benchmark": "@php vendor/bin/pest --group=benchmark"
+  }
 }
