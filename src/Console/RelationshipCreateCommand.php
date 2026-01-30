@@ -56,7 +56,14 @@ class RelationshipCreateCommand extends Command
 
             return Command::FAILURE;
         } catch (QueryException $e) {
-            if (str_contains($e->getMessage(), 'UNIQUE constraint failed') || str_contains($e->getMessage(), 'Duplicate entry')) {
+            // Handle unique constraint violations across databases
+            // SQLite: "UNIQUE constraint failed"
+            // MySQL: "Duplicate entry"
+            // PostgreSQL: "duplicate key value violates unique constraint"
+            $message = $e->getMessage();
+            if (str_contains($message, 'UNIQUE constraint failed')
+                || str_contains($message, 'Duplicate entry')
+                || str_contains($message, 'duplicate key value violates unique constraint')) {
                 $this->error('Relationship already exists.');
 
                 return Command::FAILURE;
