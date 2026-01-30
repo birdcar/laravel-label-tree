@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Test fixture model for testing HasLabels trait.
- *
  * @property string $id
  * @property string $title
  * @property string|null $description
+ * @property string $status
+ * @property string $priority
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -23,5 +23,19 @@ class Ticket extends Model
     use HasUlids;
 
     /** @var list<string> */
-    protected $fillable = ['title', 'description'];
+    protected $fillable = [
+        'title',
+        'description',
+        'status',
+        'priority',
+    ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'status' => 'string',
+            'priority' => 'string',
+        ];
+    }
 }
