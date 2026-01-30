@@ -70,16 +70,16 @@
     ],
     "test": [
       "@clear",
-      "@php vendor/bin/pest"
+      "@php vendor/bin/pest --compact"
     ],
-    "test:sqlite": "DB_CONNECTION=testing vendor/bin/pest",
-    "test:mysql": "DB_CONNECTION=mysql vendor/bin/pest",
-    "test:pgsql": "DB_CONNECTION=pgsql vendor/bin/pest",
+    "test:sqlite": "DB_CONNECTION=testing vendor/bin/pest --compact",
+    "test:mysql": "DB_CONNECTION=mysql vendor/bin/pest --compact",
+    "test:pgsql": "DB_CONNECTION=pgsql vendor/bin/pest --compact",
     "test:all": [
       "@test:sqlite",
       "@test:mysql",
       "@test:pgsql"
     ],
-    "benchmark": "@php vendor/bin/pest --group=benchmark"
+    "benchmark": "@php vendor/bin/pest --group=benchmark --compact"
   }
 }
