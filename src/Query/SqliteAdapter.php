@@ -16,6 +16,14 @@ class SqliteAdapter implements PathQueryAdapter
     {
         $this->ensureRegexpFunction($query);
 
+        // Check if pattern needs hybrid matching (regex + PHP post-filter)
+        if (Lquery::needsHybridMatch($pattern)) {
+            // Use loose regex that over-matches, caller must post-filter
+            $looseRegex = Lquery::toLooseRegex($pattern);
+
+            return $query->whereRaw("{$column} REGEXP ?", [$looseRegex]);
+        }
+
         $regex = Lquery::toRegex($pattern);
 
         return $query->whereRaw("{$column} REGEXP ?", [$regex]);

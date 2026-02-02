@@ -11,6 +11,14 @@ class MySqlAdapter implements PathQueryAdapter
 {
     public function wherePathMatches(Builder $query, string $column, string $pattern): Builder
     {
+        // Check if pattern needs hybrid matching (regex + PHP post-filter)
+        if (Lquery::needsHybridMatch($pattern)) {
+            // Use loose regex that over-matches, caller must post-filter
+            $looseRegex = Lquery::toLooseRegex($pattern);
+
+            return $query->whereRaw("{$column} REGEXP ?", [$looseRegex]);
+        }
+
         $regex = Lquery::toRegex($pattern);
 
         return $query->whereRaw("{$column} REGEXP ?", [$regex]);

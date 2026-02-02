@@ -14,6 +14,19 @@ class PostgresAdapter implements PathQueryAdapter
 
     public function wherePathMatches(Builder $query, string $column, string $pattern): Builder
     {
+        // Check if pattern needs hybrid matching (regex + PHP post-filter)
+        if (Lquery::needsHybridMatch($pattern)) {
+            // Use loose regex that over-matches, caller must post-filter
+            $looseRegex = Lquery::toLooseRegex($pattern);
+
+            if ($this->hasLtreeSupport()) {
+                // Even with ltree, use regex for loose matching
+                return $query->whereRaw("{$column} ~ ?", [$looseRegex]);
+            }
+
+            return $query->whereRaw("{$column} ~ ?", [$looseRegex]);
+        }
+
         if ($this->hasLtreeSupport()) {
             // Use native lquery - parse and recompile to ensure valid syntax
             $lquery = Lquery::toLquery($pattern);
