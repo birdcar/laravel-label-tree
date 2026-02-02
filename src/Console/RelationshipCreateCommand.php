@@ -23,17 +23,22 @@ class RelationshipCreateCommand extends Command
 
     public function handle(): int
     {
-        $parent = Label::where('slug', $this->argument('parent'))->first();
-        $child = Label::where('slug', $this->argument('child'))->first();
+        /** @var string $parentSlug */
+        $parentSlug = $this->argument('parent');
+        /** @var string $childSlug */
+        $childSlug = $this->argument('child');
+
+        $parent = Label::where('slug', $parentSlug)->first();
+        $child = Label::where('slug', $childSlug)->first();
 
         if ($parent === null) {
-            $this->error("Parent label not found: {$this->argument('parent')}");
+            $this->error('Parent label not found: '.$parentSlug);
 
             return Command::FAILURE;
         }
 
         if ($child === null) {
-            $this->error("Child label not found: {$this->argument('child')}");
+            $this->error('Child label not found: '.$childSlug);
 
             return Command::FAILURE;
         }

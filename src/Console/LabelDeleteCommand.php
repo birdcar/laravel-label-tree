@@ -19,10 +19,12 @@ class LabelDeleteCommand extends Command
 
     public function handle(): int
     {
-        $label = Label::where('slug', $this->argument('slug'))->first();
+        /** @var string $slug */
+        $slug = $this->argument('slug');
+        $label = Label::where('slug', $slug)->first();
 
         if ($label === null) {
-            $this->error("Label not found: {$this->argument('slug')}");
+            $this->error('Label not found: '.$slug);
 
             return Command::FAILURE;
         }
