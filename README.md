@@ -5,7 +5,19 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/birdcar/laravel-label-tree.svg)](https://packagist.org/packages/birdcar/laravel-label-tree)
 [![License](https://img.shields.io/packagist/l/birdcar/laravel-label-tree.svg)](https://packagist.org/packages/birdcar/laravel-label-tree)
 
-A Laravel package for hierarchical labels stored as a directed acyclic graph (DAG) with materialized path routes.
+Laravel package for **hierarchical labels with multiple parents** (DAG), **lquery pattern matching** (`priority.*`, `*.bug`), and **materialized path routes** for fast queries. Unlike traditional trees, labels can belong to multiple hierarchies—a "Wireless Gaming Mouse" can appear in both "Electronics > Mice" AND "Gaming > Accessories".
+
+## Perfect For
+
+- **E-commerce categories**: Products in multiple categories
+- **Issue tracker labels**: GitHub-style hierarchical labels with pattern queries
+- **Content taxonomy**: Nested topics with fast ancestor/descendant lookups
+- **Permission hierarchies**: Complex permission structures with multiple inheritance
+
+## Not For
+
+- **Simple flat tags**: Use [spatie/laravel-tags](https://github.com/spatie/laravel-tags) instead
+- **Single-parent trees**: Consider [kalnoy/nestedset](https://github.com/lazychaser/laravel-nestedset) if you don't need multi-parent
 
 ## Installation
 
@@ -101,12 +113,14 @@ LabelRoute::whereAncestorOf('priority.high.critical')->get();
 
 Full documentation available at [birdcar.github.io/laravel-label-tree](https://birdcar.github.io/laravel-label-tree)
 
+- [When to Use](https://birdcar.github.io/laravel-label-tree/#/when-to-use) - Decision guide for package selection
+- [Package Comparison](https://birdcar.github.io/laravel-label-tree/#/comparison) - vs spatie/laravel-tags, kalnoy/nestedset
+- [Implementation Guide](https://birdcar.github.io/laravel-label-tree/#/llm-implementation-brief) - Complete integration walkthrough
 - [Installation](https://birdcar.github.io/laravel-label-tree/#/installation)
-- [Configuration](https://birdcar.github.io/laravel-label-tree/#/configuration)
 - [Models & Relationships](https://birdcar.github.io/laravel-label-tree/#/models)
 - [HasLabels Trait](https://birdcar.github.io/laravel-label-tree/#/traits)
 - [Query Scopes & Patterns](https://birdcar.github.io/laravel-label-tree/#/query-scopes)
-- [CLI Commands](https://birdcar.github.io/laravel-label-tree/#/commands)
+- [Query Cookbook](https://birdcar.github.io/laravel-label-tree/#/llm-query-cookbook) - 20+ query examples
 - [Architecture](https://birdcar.github.io/laravel-label-tree/#/architecture)
 
 ## Requirements

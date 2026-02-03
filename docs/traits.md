@@ -1,4 +1,8 @@
+<!-- Keywords: HasLabels trait, attachRoute, syncRoutes, polymorphic tagging Laravel -->
+
 # HasLabels Trait
+
+> Add hierarchical labeling to any Eloquent model with attachRoute(), syncRoutes(), and query scopes.
 
 The `HasLabels` trait adds labeling capabilities to any Eloquent model.
 
