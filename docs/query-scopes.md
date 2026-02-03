@@ -1,4 +1,8 @@
+<!-- Keywords: lquery Laravel, pattern matching labels, wherePathMatches, whereDescendantOf -->
+
 # Query Scopes
+
+> Query labels using PostgreSQL lquery-style patterns, ancestry traversal, and depth filtering.
 
 LabelRoute provides powerful query scopes for finding routes by pattern, ancestry, and depth.
 

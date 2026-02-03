@@ -1,4 +1,8 @@
+<!-- Keywords: Label model, LabelRelationship, LabelRoute, ULID labels, polymorphic labels -->
+
 # Models
+
+> Core models for hierarchical labels: Label (nodes), LabelRelationship (edges), LabelRoute (materialized paths).
 
 Laravel Label Tree provides three main models:
 

@@ -1,4 +1,8 @@
+<!-- Keywords: DAG vs tree, materialized path, cycle detection, route generation -->
+
 # Architecture
+
+> How laravel-label-tree uses DAG structure, materialized paths, and cycle detection for hierarchical labels.
 
 ## DAG vs Tree
 

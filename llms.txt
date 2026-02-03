@@ -1,0 +1,51 @@
+# laravel-label-tree
+
+> Laravel package for hierarchical labels with multiple parents (DAG), lquery pattern matching, and materialized path routes for fast queries.
+
+## Summary
+
+laravel-label-tree provides a taxonomy/labeling system where labels can have multiple parents (unlike trees which allow only one). This enables flexible categorization like a "Wireless Gaming Mouse" belonging to both "Electronics > Mice" AND "Gaming > Accessories".
+
+The package uses materialized paths for query performance—each label's position is pre-computed as dot-separated routes like `priority.high.critical`. This enables fast ancestor/descendant queries and PostgreSQL lquery-style pattern matching (`priority.*`, `*.bug`, `*{2,3}`).
+
+Built for Laravel 11+ with support for PostgreSQL (with optional native ltree), MySQL 8+, and SQLite. Attach labels to any Eloquent model via polymorphic relationships.
+
+## Capabilities
+
+- **Labels**: Create labels with name, slug, color, icon, description (all ULIDs)
+- **Multi-Parent Hierarchy**: Labels can have multiple parents, forming a DAG
+- **Cycle Detection**: Automatic DFS-based cycle detection prevents invalid relationships
+- **Materialized Paths**: Pre-computed routes for fast hierarchical queries
+- **lquery Pattern Matching**: PostgreSQL-style patterns with wildcards (`*`), quantifiers (`{n,m}`), alternatives (`a|b`)
+- **ltxtquery Text Search**: Boolean expressions for label matching (`europe & !asia`)
+- **Ltree Functions**: `nlevel()`, `subpath()`, `lca()` across all databases
+- **HasLabels Trait**: Attach routes to any Eloquent model with `attachRoute()`, `syncRoutes()`, query scopes
+- **CLI Commands**: Create labels, manage relationships, visualize graph, validate integrity
+
+## When to Use
+
+**Use laravel-label-tree when you need**:
+- Labels with multiple parents (products in multiple categories)
+- Pattern matching queries (find all `type.bug.*`)
+- Fast ancestor/descendant lookups
+- PostgreSQL ltree-style functionality
+
+**Use simpler alternatives when**:
+- Labels are flat (no hierarchy) → spatie/laravel-tags
+- Each item has exactly one category → nested sets
+
+## Quick Links
+
+- Documentation: https://birdcar.github.io/laravel-label-tree
+- **When to Use**: https://birdcar.github.io/laravel-label-tree/#/when-to-use
+- **Package Comparison**: https://birdcar.github.io/laravel-label-tree/#/comparison
+- **Implementation Brief**: https://birdcar.github.io/laravel-label-tree/#/llm-implementation-brief
+- **Query Cookbook**: https://birdcar.github.io/laravel-label-tree/#/llm-query-cookbook
+- Installation: https://birdcar.github.io/laravel-label-tree/#/installation
+- Quick Start: https://github.com/birdcar/laravel-label-tree#quick-start
+- Query Patterns: https://birdcar.github.io/laravel-label-tree/#/query-scopes
+- Architecture: https://birdcar.github.io/laravel-label-tree/#/architecture
+
+## Keywords
+
+hierarchical labels, DAG tags, directed acyclic graph, taxonomy, category tree, nested categories, multi-parent hierarchy, materialized path, lquery, ltree, polymorphic tagging, Laravel labels, hierarchical tagging, label tree, category hierarchy, tag hierarchy

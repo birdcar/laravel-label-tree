@@ -1,4 +1,8 @@
+<!-- Keywords: install laravel-label-tree, setup hierarchical labels, DAG labels Laravel -->
+
 # Installation
+
+> Install and configure laravel-label-tree for hierarchical labeling with multi-parent support.
 
 ## Requirements
 
