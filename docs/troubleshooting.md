@@ -115,6 +115,110 @@ LabelRoute::wherePathLike('priority%')->get();
 
 **Note**: SQLite adapter is for testing only. Use PostgreSQL or MySQL in production.
 
+## Database Limitations
+
+Different databases have different capabilities and constraints. Understanding these helps you choose the right database and avoid surprises.
+
+### Quick Comparison
+
+| Feature | PostgreSQL | MySQL | SQLite |
+|---------|------------|-------|--------|
+| **Production ready** | ✅ Recommended | ✅ Yes | ❌ Testing only |
+| **ltree/lquery native** | ✅ Yes | ❌ Emulated | ❌ Emulated |
+| **Max path length** | ~2048 labels | ~255 chars | ~1000 chars |
+| **Max practical depth** | 1000+ | ~50-100 | ~50-100 |
+| **Pattern performance** | Excellent | Good | Poor |
+| **Array operators** | ✅ Yes | ❌ No | ❌ No |
+
+### PostgreSQL (Recommended)
+
+PostgreSQL with the ltree extension is the optimal choice for production:
+
+- Native lquery pattern matching with GiST index support
+- No practical depth limits (tested to 1000+ levels)
+- Array operators for batch ancestry queries (`@>`, `<@`)
+- Best query performance
+
+**Enable ltree:**
+```bash
+php artisan label-graph:install-ltree
+```
+
+### MySQL
+
+MySQL 8+ works well for most use cases with some constraints:
+
+**Path length limit**: The `path` column is `VARCHAR(255)` by default. With label slugs averaging 10 characters plus dots, practical depth is ~25 levels. For deeper hierarchies:
+
+```php
+// In a migration
+Schema::table('label_routes', function (Blueprint $table) {
+    $table->string('path', 1024)->change();
+});
+```
+
+**Savepoint nesting**: MySQL has limits on nested transactions. Creating 50+ related LabelRelationships in a single transaction may fail. Use chunked inserts:
+
+```php
+// Instead of one loop with 100 creates
+foreach (array_chunk($relationships, 25) as $chunk) {
+    DB::transaction(function () use ($chunk) {
+        foreach ($chunk as $rel) {
+            LabelRelationship::create($rel);
+        }
+    });
+}
+```
+
+**Pattern matching**: Emulated via LIKE and REGEXP. Slower than PostgreSQL ltree but adequate for most workloads.
+
+### SQLite
+
+**For development/testing only.** Not recommended for production.
+
+- No regex support (PHP fallback, very slow)
+- Limited concurrent writes
+- No array operators
+- Path length limited by page size (~1000 chars practical limit)
+
+### Depth Recommendations by Use Case
+
+| Use Case | Recommended Depth | Database |
+|----------|-------------------|----------|
+| Flat tags (1-2 levels) | Any | Any |
+| Product categories | 5-10 | MySQL/PostgreSQL |
+| Issue tracker labels | 3-5 | MySQL/PostgreSQL |
+| Deep taxonomies | 20-50 | PostgreSQL |
+| File-system-like paths | 50+ | PostgreSQL with ltree |
+| Very deep hierarchies | 100+ | PostgreSQL with ltree |
+
+### PostgreSQL-Only Features
+
+These features require PostgreSQL with ltree:
+
+```php
+// Array operators - check ancestors/descendants against array
+LabelRoute::wherePathInAncestors(['a.b', 'x.y'])->get();
+LabelRoute::wherePathInDescendants(['root1', 'root2'])->get();
+
+// Check support at runtime
+if (LabelRoute::supportsArrayOperators()) {
+    // Use batch operations
+}
+
+// Text search patterns (ltxtquery)
+LabelRoute::wherePathMatchesText('electronics & wireless')->get();
+```
+
+### Migration Between Databases
+
+When migrating from one database to another:
+
+1. **Export routes**: `php artisan label-graph:route:list --format=json > routes.json`
+2. **Validate before migration**: `php artisan label-graph:validate`
+3. **Check path lengths**: Ensure all paths fit in target column size
+4. **Regenerate after migration**: `php artisan label-graph:route:regenerate`
+
 ## Validation
 
 Run the validation command to check for issues:

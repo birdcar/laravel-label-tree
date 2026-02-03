@@ -293,11 +293,279 @@ $tickets = Ticket::whereHasRouteAncestorOf('priority.high.critical')->get();
 
 ---
 
+## Route Traversal Methods
+
+Instance methods on LabelRoute for navigating hierarchies.
+
+### Example 15: Ancestor traversal
+
+**Use case:** Get breadcrumb path from root to current route.
+
+```php
+<?php
+
+use Birdcar\LabelGraph\Models\LabelRoute;
+
+$route = LabelRoute::where('path', 'electronics.phones.iphone')->first();
+
+// All ancestors (not including self)
+$ancestors = $route->ancestors();
+// Returns: electronics, electronics.phones
+
+// Ancestors including self, ordered root-to-leaf
+$breadcrumbs = $route->ancestorsAndSelf();
+// Returns: electronics, electronics.phones, electronics.phones.iphone
+
+// Just the direct parent
+$parent = $route->parent();
+// Returns: electronics.phones
+```
+
+**Performance:** Fast. Path prefix operations.
+
+---
+
+### Example 16: Descendant traversal
+
+**Use case:** Get all items in a category subtree.
+
+```php
+<?php
+
+$route = LabelRoute::where('path', 'electronics')->first();
+
+// All descendants
+$descendants = $route->descendants();
+// Returns: electronics.phones, electronics.phones.iphone, electronics.tablets...
+
+// Descendants including self
+$subtree = $route->descendantsAndSelf();
+
+// Just direct children
+$children = $route->children();
+// Returns: electronics.phones, electronics.tablets (depth +1 only)
+```
+
+**Performance:** Fast. LIKE query with index.
+
+---
+
+### Example 17: Sibling and bloodline
+
+**Use case:** Navigate lateral and vertical relationships.
+
+```php
+<?php
+
+$route = LabelRoute::where('path', 'electronics.phones')->first();
+
+// Other children of same parent
+$siblings = $route->siblings();
+// Returns: electronics.tablets, electronics.laptops...
+
+// Including self
+$siblingsAndSelf = $route->siblingsAndSelf();
+
+// Complete bloodline (ancestors + self + descendants)
+$bloodline = $route->bloodline();
+// Returns: electronics, electronics.phones, electronics.phones.iphone...
+```
+
+**Performance:** Siblings require parent lookup. Bloodline combines multiple queries.
+
+---
+
+### Example 18: Root and leaf checks
+
+**Use case:** Identify hierarchy boundaries.
+
+```php
+<?php
+
+$route = LabelRoute::where('path', 'electronics.phones.iphone')->first();
+
+// Check position in hierarchy
+$route->isRoot();        // false - has ancestors
+$route->isLeaf();        // true if no children
+$route->isAncestorOf('electronics.phones.iphone.pro');   // true
+$route->isDescendantOf('electronics');                    // true
+
+// Get all root ancestors (DAG may have multiple roots)
+$roots = $route->rootAncestors();
+```
+
+---
+
+## Subtree Labelable Queries
+
+Query attached models across subtrees.
+
+### Example 19: Products in category subtree
+
+**Use case:** Find all products under a category including subcategories.
+
+```php
+<?php
+
+$electronics = LabelRoute::where('path', 'electronics')->first();
+
+// Products attached to any descendant route
+$products = $electronics->labelablesOfDescendants(Product::class)->get();
+
+// Products attached to this route OR any descendant
+$products = $electronics->labelablesOfDescendantsAndSelf(Product::class)->get();
+
+// Check if any products exist in subtree
+if ($electronics->hasLabelablesInDescendants(Product::class)) {
+    // Category has products
+}
+
+// Count products across subtree
+$count = $electronics->labelablesOfDescendantsCount(Product::class);
+```
+
+**Performance:** Uses descendant IDs in subquery. Efficient with proper indexes.
+
+---
+
+### Example 20: Multi-subtree queries
+
+**Use case:** Find models in any of several category trees.
+
+```php
+<?php
+
+use App\Models\Product;
+
+// Products in electronics OR accessories subtrees
+$products = Product::whereHasRouteInSubtrees([
+    'electronics',
+    'accessories'
+])->get();
+
+// Alternative: explicit OR
+$products = Product::where(function ($query) {
+    $query->whereHasRouteOrDescendant('electronics')
+          ->orWhereHasRouteOrDescendant('accessories');
+})->get();
+```
+
+---
+
+## Tree Building
+
+Convert flat collections to nested structures.
+
+### Example 21: Build tree from routes
+
+**Use case:** Render hierarchical menu from routes.
+
+```php
+<?php
+
+// Get all routes in a subtree
+$routes = LabelRoute::whereDescendantOf('categories')->get();
+$routes->push(LabelRoute::where('path', 'categories')->first());
+
+// Build nested tree
+$tree = $routes->toTree();
+
+// Each node has 'children' array
+foreach ($tree as $root) {
+    echo $root->path;
+    foreach ($root->children as $child) {
+        echo "  - {$child->path}";
+    }
+}
+
+// Custom children key
+$tree = $routes->toTree(childrenKey: 'items');
+
+// Only true roots (depth 0)
+$tree = $routes->toTree(rootsOnly: true);
+```
+
+### Example 22: Handle DAG duplicates
+
+**Use case:** Display tree when nodes have multiple parents.
+
+```php
+<?php
+
+$tree = $routes->toTree();
+
+// Nodes appearing under multiple parents are marked
+foreach ($tree as $node) {
+    renderNode($node);
+}
+
+function renderNode($node, $depth = 0) {
+    $prefix = str_repeat('  ', $depth);
+    $duplicate = $node->_is_duplicate ? ' (also appears elsewhere)' : '';
+    echo "{$prefix}{$node->path}{$duplicate}\n";
+
+    foreach ($node->children ?? [] as $child) {
+        renderNode($child, $depth + 1);
+    }
+}
+```
+
+---
+
+## Ordering
+
+### Example 23: Breadth-first and depth-first
+
+**Use case:** Control traversal order for display.
+
+```php
+<?php
+
+// Breadth-first: level by level
+$routes = LabelRoute::orderByBreadthFirst()->get();
+// root, child1, child2, child1.a, child1.b, child2.a...
+
+// Depth-first: parent before children (tree order)
+$routes = LabelRoute::orderByDepthFirst()->get();
+// root, child1, child1.a, child1.b, child2, child2.a...
+```
+
+---
+
+## Constraint Scoping
+
+### Example 24: Filter traversals
+
+**Use case:** Exclude archived routes from queries.
+
+```php
+<?php
+
+// Query constraint: applies to all results
+$routes = LabelRoute::query()
+    ->withQueryConstraint(fn ($q) => $q->where('path', 'not like', '%archived%'))
+    ->whereDescendantOf('categories')
+    ->get();
+
+// Instance method with constraints
+$route = LabelRoute::where('path', 'categories')->first();
+
+$filteredAncestors = $route->ancestorsWithConstraints(
+    traversalConstraint: fn ($q) => $q->where('depth', '>', 0)
+);
+
+$limitedDescendants = $route->descendantsWithConstraints(
+    traversalConstraint: fn ($q) => $q->where('depth', '<=', 3)
+);
+```
+
+---
+
 ## Advanced Patterns
 
 ### Combining Scopes
 
-#### Example 15: Multiple label conditions
+#### Example 25: Multiple label conditions
 
 **Use case:** Complex filtering by multiple labels.
 
@@ -312,7 +580,7 @@ $tickets = Ticket::query()
     ->get();
 ```
 
-#### Example 16: Label + model conditions
+#### Example 26: Label + model conditions
 
 **Use case:** Filter by labels AND model attributes.
 
@@ -332,7 +600,7 @@ $tickets = Ticket::query()
 
 ### Subqueries
 
-#### Example 17: Models with specific label count
+#### Example 27: Models with specific label count
 
 **Use case:** Find models with exactly N labels.
 
@@ -350,7 +618,7 @@ $overLabeled = Ticket::withRoutesCount()
     ->get();
 ```
 
-#### Example 18: Models without any labels
+#### Example 28: Models without any labels
 
 **Use case:** Find uncategorized items.
 
@@ -370,7 +638,7 @@ $unlabeled = Ticket::withRoutesCount()
 
 ### Performance Optimization
 
-#### Example 19: Eager loading
+#### Example 29: Eager loading
 
 **Use case:** Avoid N+1 queries when displaying labels.
 
@@ -390,7 +658,7 @@ foreach ($tickets as $ticket) {
 }
 ```
 
-#### Example 20: Selective loading
+#### Example 30: Selective loading
 
 **Use case:** Load only specific route data.
 
@@ -410,15 +678,47 @@ foreach ($tickets as $ticket) {
 
 ## Query Summary Table
 
+### Model Scopes (HasLabels trait)
+
 | Query | Use Case | Performance |
 |-------|----------|-------------|
 | `whereHasRoute('exact')` | Exact label match | Fast |
 | `whereHasRouteMatching('prefix.*')` | Pattern with prefix | Fast |
 | `whereHasRouteMatching('*.suffix')` | Pattern with suffix | Moderate |
-| `whereHasRouteDescendantOf('path')` | All under category | Fast |
-| `whereHasRouteAncestorOf('path')` | Ancestors of path | Moderate |
-| `LabelRoute::whereDepth(n)` | Specific depth | Very Fast |
-| `LabelRoute::wherePathMatches()` | lquery patterns | Varies |
+| `whereHasRouteDescendantOf('path')` | Descendants only | Fast |
+| `whereHasRouteAncestorOf('path')` | Ancestors only | Moderate |
+| `whereHasRouteOrDescendant('path')` | Path + descendants | Fast |
+| `whereHasRouteOrAncestor('path')` | Path + ancestors | Moderate |
+| `whereHasRouteInSubtrees([...])` | Multiple subtrees | Fast |
+
+### LabelRoute Scopes
+
+| Query | Use Case | Performance |
+|-------|----------|-------------|
+| `whereDepth(n)` | Specific depth | Very Fast |
+| `whereDepthBetween(min, max)` | Depth range | Very Fast |
+| `whereIsRoot()` | Root routes | Very Fast |
+| `whereHasChildren()` | Non-leaf routes | Moderate |
+| `wherePathMatches('pattern')` | lquery patterns | Varies |
+| `whereDescendantOf('path')` | Subtree query | Fast |
+| `whereAncestorOf('path')` | Ancestor query | Fast |
+| `orderByBreadthFirst()` | Level order | Fast |
+| `orderByDepthFirst()` | Tree order | Fast |
+
+### Instance Methods
+
+| Method | Returns | Performance |
+|--------|---------|-------------|
+| `ancestors()` | Collection | Fast |
+| `ancestorsAndSelf()` | Collection (ordered) | Fast |
+| `descendants()` | Collection | Fast |
+| `descendantsAndSelf()` | Collection | Fast |
+| `parent()` | LabelRoute\|null | Fast |
+| `children()` | Collection | Fast |
+| `siblings()` | Collection | Moderate |
+| `rootAncestors()` | Collection | Fast |
+| `bloodline()` | Collection | Moderate |
+| `labelablesOfDescendants(Class)` | Builder | Moderate |
 
 ---
 

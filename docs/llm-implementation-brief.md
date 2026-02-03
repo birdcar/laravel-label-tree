@@ -8,7 +8,12 @@
 
 - Laravel 11.0+ application
 - PHP 8.3+
-- Database: SQLite, MySQL 8+, or PostgreSQL 14+
+- Database: PostgreSQL 14+ (recommended), MySQL 8+, or SQLite (testing only)
+
+**Database notes:**
+- PostgreSQL with ltree: Best performance, native pattern matching, unlimited depth
+- MySQL: Full support, ~50-100 level practical depth limit due to path column size
+- SQLite: Development/testing only, not for production
 
 ---
 
@@ -398,17 +403,54 @@ $model->hasRoute('exact.path');
 $model->hasRouteMatching('pattern.*');
 $model->label_paths; // ['path.one', 'path.two']
 
-// === QUERY ===
+// === QUERY MODELS BY LABELS ===
 Model::whereHasRoute('exact.path')->get();
 Model::whereHasRouteMatching('pattern.*')->get();
 Model::whereHasRouteDescendantOf('path')->get();
 Model::whereHasRouteAncestorOf('deep.path')->get();
+Model::whereHasRouteOrDescendant('path')->get();      // Includes exact match
+Model::whereHasRouteOrAncestor('deep.path')->get();   // Includes exact match
+Model::whereHasRouteInSubtrees(['path1', 'path2'])->get();  // Multiple subtrees
 
-// === ROUTES ===
+// === ROUTE SCOPES ===
 LabelRoute::wherePathMatches('pattern.*')->get();
 LabelRoute::whereDescendantOf('path')->get();
 LabelRoute::whereAncestorOf('deep.path')->get();
-LabelRoute::whereDepth(0)->get(); // Root routes only
+LabelRoute::whereDepth(0)->get();                     // Root routes only
+LabelRoute::whereDepthBetween(1, 3)->get();           // Depth range
+LabelRoute::whereIsRoot()->get();                     // Depth 0
+LabelRoute::whereHasChildren()->get();                // Has descendants
+LabelRoute::orderByBreadthFirst()->get();             // Level order
+LabelRoute::orderByDepthFirst()->get();               // Parent-before-children
+
+// === ROUTE INSTANCE TRAVERSAL ===
+$route->ancestors();           // All ancestors
+$route->ancestorsAndSelf();    // Ancestors + self, ordered root-to-leaf
+$route->descendants();         // All descendants
+$route->descendantsAndSelf();  // Descendants + self
+$route->parent();              // Direct parent (or null)
+$route->children();            // Direct children
+$route->siblings();            // Same-level routes (DAG: any shared parent)
+$route->siblingsAndSelf();     // Siblings including self
+$route->rootAncestors();       // All roots (DAG may have multiple)
+$route->bloodline();           // Ancestors + self + descendants
+
+// === ROUTE CHECKS ===
+$route->isRoot();              // Is root (depth 0)?
+$route->isLeaf();              // Has no children?
+$route->isAncestorOf($other);  // Is ancestor?
+$route->isDescendantOf($other);// Is descendant?
+
+// === SUBTREE QUERIES ===
+$route->labelablesOfDescendants(Product::class)->get();      // Products in subtree
+$route->labelablesOfDescendantsAndSelf(Product::class)->get();
+$route->hasLabelablesInDescendants(Product::class);          // Boolean check
+$route->labelablesOfDescendantsCount(Product::class);        // Count
+
+// === TREE BUILDING ===
+$routes->toTree();                              // Build nested tree structure
+$routes->toTree(childrenKey: 'items');          // Custom children key
+$routes->toTree(rootsOnly: true);               // Only depth-0 as roots
 
 // === CLI ===
 php artisan label-graph:label:list
@@ -416,7 +458,7 @@ php artisan label-graph:label:create "Name"
 php artisan label-graph:route:list
 php artisan label-graph:route:regenerate
 php artisan label-graph:validate
-php artisan label-graph:visualize
+php artisan label-graph:visualize              // Formats: tree, ascii, json, dot, mermaid
 ```
 
 ---
