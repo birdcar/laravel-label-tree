@@ -19,6 +19,7 @@ use Birdcar\LabelGraph\Console\RouteRegenerateCommand;
 use Birdcar\LabelGraph\Console\ValidateCommand;
 use Birdcar\LabelGraph\Console\VisualizeCommand;
 use Birdcar\LabelGraph\Models\LabelRelationship;
+use Birdcar\LabelGraph\Models\LabelRoute;
 use Birdcar\LabelGraph\Observers\LabelRelationshipObserver;
 use Birdcar\LabelGraph\Query\AdapterFactory;
 use Birdcar\LabelGraph\Query\PathQueryAdapter;
@@ -28,6 +29,7 @@ use Birdcar\LabelGraph\Services\GraphValidator;
 use Birdcar\LabelGraph\Services\GraphVisualizer;
 use Birdcar\LabelGraph\Services\RouteGenerator;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
 
 class LabelGraphServiceProvider extends ServiceProvider
@@ -82,6 +84,63 @@ class LabelGraphServiceProvider extends ServiceProvider
         LabelRelationship::observe(LabelRelationshipObserver::class);
 
         $this->registerSchemaMacros();
+        $this->registerCollectionMacros();
+    }
+
+    protected function registerCollectionMacros(): void
+    {
+        Collection::macro('toTree', function (string $childrenKey = 'children', bool $rootsOnly = false) {
+            /** @var Collection<int, LabelRoute> $this */
+            $items = $this->keyBy('id');
+            $seen = collect();
+
+            // Build parent-child map based on path structure
+            $childrenMap = collect();
+            $rootPaths = collect();
+
+            foreach ($items as $item) {
+                $parentPath = $item->depth > 0
+                    ? implode('.', array_slice($item->segments, 0, -1))
+                    : null;
+
+                $parent = $parentPath
+                    ? $items->first(fn ($i) => $i->path === $parentPath)
+                    : null;
+
+                if ($parent) {
+                    if (! $childrenMap->has($parent->id)) {
+                        $childrenMap[$parent->id] = collect();
+                    }
+                    $childrenMap[$parent->id]->push($item);
+                } else {
+                    $rootPaths->push($item->path);
+                }
+            }
+
+            // Recursive tree builder
+            $buildTree = function ($item) use (&$buildTree, $childrenMap, $childrenKey, &$seen) {
+                $isDuplicate = $seen->contains($item->id);
+                $seen->push($item->id);
+
+                $children = $childrenMap->get($item->id, collect())
+                    ->map(fn ($child) => $buildTree($child))
+                    ->values();
+
+                $item->setAttribute($childrenKey, $children);
+                $item->setAttribute('_is_duplicate', $isDuplicate);
+
+                return $item;
+            };
+
+            // Build tree from roots
+            $roots = $items->filter(fn ($item) => $rootPaths->contains($item->path));
+
+            if ($rootsOnly) {
+                $roots = $roots->filter(fn ($item) => $item->depth === 0);
+            }
+
+            return $roots->map(fn ($root) => $buildTree($root))->values();
+        });
     }
 
     protected function registerSchemaMacros(): void

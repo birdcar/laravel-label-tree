@@ -19,6 +19,16 @@
 | **Laravel 11+** | Yes | Yes | Yes | Yes |
 | **Actively maintained** | Yes | Yes (Oct 2025) | Yes (May 2025) | Yes (Jul 2025) |
 
+## Database Support
+
+| Database | Support Level | Notes |
+|----------|---------------|-------|
+| **PostgreSQL 14+** | ✅ Optimal | Native ltree, array operators, unlimited depth |
+| **MySQL 8+** | ✅ Full | Emulated lquery, ~50-100 level depth |
+| **SQLite** | ⚠️ Testing only | PHP pattern fallback, not for production |
+
+See [Troubleshooting: Database Limitations](troubleshooting.md#database-limitations) for details.
+
 ## Detailed Comparison
 
 ### vs spatie/laravel-tags
@@ -80,6 +90,27 @@
 - laravel-label-graph: Pre-computed materialized paths with pattern language
 
 **Migration complexity:** Low-moderate. Both support multi-parent; main change is adopting materialized paths and lquery patterns.
+
+**API parity:** laravel-label-graph provides equivalent methods for all adjacency-list traversal operations:
+
+| adjacency-list | label-graph |
+|----------------|-------------|
+| `ancestors()` | `ancestors()` |
+| `ancestorsAndSelf()` | `ancestorsAndSelf()` |
+| `descendants()` | `descendants()` |
+| `descendantsAndSelf()` | `descendantsAndSelf()` |
+| `parent()` | `parent()` |
+| `children()` | `children()` |
+| `siblings()` | `siblings()` |
+| `rootAncestor()` | `rootAncestors()` (returns collection for DAG) |
+| `bloodline()` | `bloodline()` |
+| `isRoot()`, `isLeaf()` | `isRoot()`, `isLeaf()` |
+| `breadthFirst()` | `orderByBreadthFirst()` |
+| `depthFirst()` | `orderByDepthFirst()` |
+| `toTree()` | `toTree()` (collection macro) |
+| `withQueryConstraint()` | `withQueryConstraint()` |
+
+See [Migration from adjacency-list](migration-from-adjacency-list.md) for detailed migration guide.
 
 ## When NOT to Use laravel-label-graph
 
